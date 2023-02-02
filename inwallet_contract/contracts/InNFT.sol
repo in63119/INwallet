@@ -1,83 +1,28 @@
+//Contract based on [https://docs.openzeppelin.com/contracts/3.x/erc721](https://docs.openzeppelin.com/contracts/3.x/erc721)
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.4;
+pragma solidity ^0.8.7;
 
-import "./ERC721/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-import "./utilContract/Ownable.sol";
-import "./utilContract/ToString.sol";
-import "./utilContract/Counters.sol";
+contract MyNFTs is ERC721URIStorage, Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
 
-contract InNFT is ERC721URIStorage, Ownable, ToString {
-    address private proxyContract;
+    constructor() public ERC721("MyNFTs", "MNFT") {}
 
-    Counters.Counter private tokenIds;
+    function mintNFT(address recipient, string memory tokenURI)
+        public onlyOwner
+        returns (uint256)
+    {
+        _tokenIds.increment();
 
-    string private prefixURI = "https://inwallet.ml/nft/metadata/";
-    string private constant SUFIXURI = ".json";
+        uint256 newItemId = _tokenIds.current();
+        _mint(recipient, newItemId);
+        _setTokenURI(newItemId, tokenURI);
 
-    constructor() ERC721("INNFT", "INN") {}
-
-    function mint(address _to) external returns (bool) {
-        require(proxyContract != address(0), "proxyContract == address(0)");
-        require(
-            msg.sender == proxyContract,
-            "msg.sender Error : Not HouseCore Address"
-        );
-
-        Counters.increment(tokenIds);
-
-        uint256 currentTokenId = Counters.current(tokenIds);
-
-        string memory uri = append(
-            prefixURI,
-            toString(currentTokenId),
-            SUFIXURI
-        );
-
-        _mint(_to, currentTokenId);
-        _setTokenURI(currentTokenId, uri);
-
-        return true;
-    }
-
-    function burn(address _user, uint256 _tokenId) external {
-        require(proxyContract != address(0), "proxyContract == address(0)");
-        require(
-            msg.sender == proxyContract,
-            "msg.sender Error : Not MthzCore Address"
-        );
-        require(ownerOf(_tokenId) == _user, "ownerOf Error : Not Token Owner");
-
-        _burn(_tokenId);
-    }
-
-    function totalSupply() external view returns (uint256) {
-        return Counters.current(tokenIds);
-    }
-
-    function getProxyContract() external view returns (address) {
-        return proxyContract;
-    }
-
-    // ***** onlyOwner *****
-
-    function reSetPrefixURI(string calldata _prefixURI) external onlyOwner {
-        prefixURI = _prefixURI;
-    }
-
-    function setAllTokenURI(string calldata _prefixURI) external onlyOwner {
-        uint256 totalCount = Counters.current(tokenIds);
-
-        for (uint256 i = 1; i <= totalCount; i++) {
-            string memory uri = append(_prefixURI, toString(i), SUFIXURI);
-
-            _setTokenURI(i, uri);
-        }
-    }
-
-    function setContractAddress(address _proxyContract) external onlyOwner {
-        require(_proxyContract != address(0), "proxyContract == address(0)");
-
-        proxyContract = _proxyContract;
+        return newItemId;
     }
 }
